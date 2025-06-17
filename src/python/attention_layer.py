@@ -74,7 +74,6 @@ class SpatialAttentionLayer(nn.Module):
         super(SpatialAttentionLayer, self).__init__()
         self.in_channels = in_channels
         self.use_cuda = use_cuda and CUDA_AVAILABLE
-        print(f"Spatial attention layer initialized with CUDA: {self.use_cuda}")
         
         # 1x1 convolutions for Q, K, V
         self.q_conv = nn.Conv2d(in_channels, in_channels, 1)

@@ -14,6 +14,8 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
         num_threads: Number of CPU threads to use (only for CPU mode)
         batch_size: Batch size for training
     """
+    print("DEBUG: Starting training setup")  # Debug print
+    
     # Set device and threads
     if device_type == 'cpu':
         if num_threads is not None:
@@ -24,19 +26,19 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # Set CUDA memory management
         torch.cuda.empty_cache()
-        if hasattr(torch.cuda, 'memory_summary'):
-            print(torch.cuda.memory_summary())
         print(f"Running on {device}")
     
-    # Data loading
+    print("DEBUG: Loading dataset")  # Debug print
+    
+    # Data loading with single channel normalization
     transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((32, 32)),  # Resize to 32x32 like CIFAR-10
         transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        transforms.Normalize((0.1307,), (0.3081,))  # MNIST mean and std for single channel
     ])
     
-    train_dataset = datasets.CIFAR10(root='./data', train=True, 
-                                    download=True, transform=transform)
+    train_dataset = datasets.MNIST(root='./data', train=True, 
+                                 download=True, transform=transform)
     
     # Create a subset sampler
     indices = list(range(len(train_dataset)))
@@ -52,8 +54,10 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
     
     print(f"Using {subset_size} samples for training with batch size {batch_size}")
     
-    # Model setup
-    model = AttentionCNN(num_classes=10, use_cuda_attention=(device_type == 'cuda'))
+    print("DEBUG: Creating model")  # Debug print
+    
+    # Model setup with single channel input
+    model = AttentionCNN(num_classes=10, in_channels=1, use_cuda_attention=(device_type == 'cuda'))
     model.to(device)
     
     # Enable cudnn benchmarking for faster training
@@ -63,11 +67,15 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
+    print("DEBUG: Starting training loop")  # Debug print
+    
     # Training loop
     model.train()
     for epoch in range(10):
         running_loss = 0.0
         for i, (inputs, labels) in enumerate(train_loader):
+            print(f"DEBUG: Processing batch {i+1}")  # Debug print
+            
             # Move data to device asynchronously
             inputs = inputs.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
