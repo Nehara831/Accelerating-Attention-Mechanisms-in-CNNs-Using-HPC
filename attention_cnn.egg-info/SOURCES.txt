@@ -1,0 +1,16 @@
+setup.py
+attention_cnn.egg-info/PKG-INFO
+attention_cnn.egg-info/SOURCES.txt
+attention_cnn.egg-info/dependency_links.txt
+attention_cnn.egg-info/requires.txt
+attention_cnn.egg-info/top_level.txt
+src/__init__.py
+src/cpp/attention.cpp
+src/cpp/attention_cuda.cu
+src/cpp/python_binding.cpp
+src/python/__init__.py
+src/python/attention_cnn.py
+src/python/attention_layer.py
+src/python/inference.py
+src/python/train.py
+src/python/utils.py

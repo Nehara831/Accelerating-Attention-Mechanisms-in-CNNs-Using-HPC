@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: attention_cnn
+Version: 0.1
+Requires-Python: >=3.7
+Requires-Dist: torch>=1.9.0
+Requires-Dist: torchvision>=0.10.0
+Requires-Dist: numpy>=1.19.0
+Requires-Dist: opencv-python>=4.5.0
+Requires-Dist: matplotlib>=3.3.0
+Requires-Dist: tqdm>=4.60.0
+Dynamic: requires-dist
+Dynamic: requires-python
