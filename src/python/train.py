@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from torchvision import datasets, transforms
 from src.python.attention_cnn import AttentionCNN
+import time
 
 def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_size=32):
     """
@@ -14,7 +15,7 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
         num_threads: Number of CPU threads to use (only for CPU mode)
         batch_size: Batch size for training
     """
-    print("DEBUG: Starting training setup")  # Debug print
+    print("DEBUG: Starting training setup")  
     
     # Set device and threads
     if device_type == 'cpu':
@@ -24,23 +25,20 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
         print(f"Running on CPU with {num_threads if num_threads else 'default'} threads")
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # Set CUDA memory management
         torch.cuda.empty_cache()
         print(f"Running on {device}")
     
-    print("DEBUG: Loading dataset")  # Debug print
+    print("DEBUG: Loading dataset")  
     
-    # Data loading with single channel normalization
     transform = transforms.Compose([
-        transforms.Resize((32, 32)),  # Resize to 32x32 like CIFAR-10
+        transforms.Resize((32, 32)),  
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))  # MNIST mean and std for single channel
+        transforms.Normalize((0.1307,), (0.3081,)) 
     ])
     
     train_dataset = datasets.MNIST(root='./data', train=True, 
                                  download=True, transform=transform)
     
-    # Create a subset sampler
     indices = list(range(len(train_dataset)))
     subset_indices = indices[:subset_size]
     sampler = SubsetRandomSampler(subset_indices)
@@ -50,37 +48,39 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
     
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, 
                             sampler=sampler, num_workers=num_workers,
-                            pin_memory=(device_type == 'cuda'))  # Enable pin_memory for GPU
+                            pin_memory=(device_type == 'cuda'))  
     
     print(f"Using {subset_size} samples for training with batch size {batch_size}")
     
-    print("DEBUG: Creating model")  # Debug print
+    print("DEBUG: Creating model")  
     
-    # Model setup with single channel input
     model = AttentionCNN(num_classes=10, in_channels=1, use_cuda_attention=(device_type == 'cuda'))
     model.to(device)
     
-    # Enable cudnn benchmarking for faster training
     if device_type == 'cuda':
         torch.backends.cudnn.benchmark = True
     
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     
-    print("DEBUG: Starting training loop")  # Debug print
-    
+    print("DEBUG: Starting training loop") 
+
+    # Start timing
+    total_start_time = time.time()
+
     # Training loop
     model.train()
     for epoch in range(10):
+        epoch_start_time = time.time()
         running_loss = 0.0
         for i, (inputs, labels) in enumerate(train_loader):
-            print(f"DEBUG: Processing batch {i+1}")  # Debug print
+            print(f"DEBUG: Processing batch {i+1}")  
             
             # Move data to device asynchronously
             inputs = inputs.to(device, non_blocking=True)
             labels = labels.to(device, non_blocking=True)
             
-            if i == 0:  # Print shape only for first batch
+            if i == 0:  
                 print(f"Input tensor shape: {inputs.shape}")
             
             optimizer.zero_grad()
@@ -94,10 +94,16 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
                 print(f'Epoch {epoch+1}, Batch {i+1}, Loss: {running_loss/10:.4f}')
                 running_loss = 0.0
                 
-                # Print GPU memory usage
                 if device_type == 'cuda':
                     print(f"GPU Memory: {torch.cuda.memory_allocated()/1024**2:.1f}MB allocated, "
                           f"{torch.cuda.memory_reserved()/1024**2:.1f}MB reserved")
+        epoch_end_time = time.time()
+        print(f"Epoch {epoch+1} completed in {epoch_end_time - epoch_start_time:.2f} seconds")
+
+    # End timing
+    total_end_time = time.time()
+    elapsed = total_end_time - total_start_time
+    print(f"Training completed in {elapsed:.2f} seconds on {device_type.upper()}")
 
 if __name__ == "__main__":
     import argparse
