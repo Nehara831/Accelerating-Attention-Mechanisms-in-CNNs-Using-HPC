@@ -3,7 +3,6 @@ import torch.nn as nn
 import numpy as np
 import sys
 
-# Try to import CUDA module
 try:
     import attention_cuda_py
     CUDA_AVAILABLE = attention_cuda_py.cuda_available()
@@ -22,7 +21,6 @@ class CUDAAttentionLayer(nn.Module):
         self.use_cuda = use_cuda and CUDA_AVAILABLE
         print(f"Attention layer initialized with CUDA: {self.use_cuda}")
         
-        # Linear projections for Q, K, V
         self.q_proj = nn.Linear(embed_dim, embed_dim)
         self.k_proj = nn.Linear(embed_dim, embed_dim)
         self.v_proj = nn.Linear(embed_dim, embed_dim)
@@ -91,7 +89,7 @@ class SpatialAttentionLayer(nn.Module):
         K = self.k_conv(x).view(batch_size, channels, -1).permute(0, 2, 1)  # [B, HW, C]
         V = self.v_conv(x).view(batch_size, channels, -1).permute(0, 2, 1)  # [B, HW, C]
         
-        if self.use_cuda and seq_len <= 4096:  # Only use CUDA for reasonable sequence lengths
+        if self.use_cuda and seq_len <= 4096:  
             outputs = []
             for i in range(batch_size):
                 q_i = Q[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]

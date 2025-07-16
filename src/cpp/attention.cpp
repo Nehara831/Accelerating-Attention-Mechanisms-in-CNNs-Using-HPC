@@ -128,7 +128,6 @@ Matrix add(const Matrix& A, const Matrix& B) {
     return result;
 }
 
-// Print matrix for debugging
 void print_matrix(const Matrix& mat, const std::string& name, int max_rows = 5, int max_cols = 5) {
     if (mat.empty()) {
         std::cout << name << ": [empty matrix]" << std::endl;
@@ -183,7 +182,6 @@ bool validate_matrices(const Matrix& Q, const Matrix& K, const Matrix& V) {
         return false;
     }
     
-    // Check for consistent row sizes within each matrix
     for (const auto& row : Q) {
         if (row.size() != Q_cols) {
             std::cerr << "Error: Inconsistent row sizes in Q matrix" << std::endl;
@@ -210,7 +208,6 @@ bool validate_matrices(const Matrix& Q, const Matrix& K, const Matrix& V) {
 
 // CPU attention implementation
 Matrix attention_cpu(const Matrix& Q, const Matrix& K, const Matrix& V) {
-    // Validate input matrices
     if (!validate_matrices(Q, K, V)) {
         throw std::invalid_argument("Invalid matrix dimensions for attention computation");
     }
@@ -220,34 +217,20 @@ Matrix attention_cpu(const Matrix& Q, const Matrix& K, const Matrix& V) {
     int seq_len_k = K.size();
     int embed_dim_v = V[0].size();
     
-    // Debug prints (can be disabled in production)
-    #ifdef DEBUG_ATTENTION
-    std::cout << "CPU Attention computation:" << std::endl;
-    std::cout << "Q: " << seq_len_q << "x" << embed_dim << std::endl;
-    std::cout << "K: " << seq_len_k << "x" << embed_dim << std::endl;
-    std::cout << "V: " << seq_len_k << "x" << embed_dim_v << std::endl;
-    #endif
+
     
     try {
-        // Step 1: Compute attention scores = Q * K^T
+        // Q * K^T
         Matrix K_T = transpose(K);
         Matrix scores = multiply(Q, K_T);
         
-        // Step 2: Scale by sqrt(embed_dim) for stability
         float scale_factor = 1.0f / std::sqrt(static_cast<float>(embed_dim));
         scores = scale(scores, scale_factor);
         
-        // Step 3: Apply softmax to get attention weights
         Matrix attention_weights = softmax(scores);
         
-        // Step 4: Apply attention weights to values = attention_weights * V
         Matrix output = multiply(attention_weights, V);
         
-        #ifdef DEBUG_ATTENTION
-        print_matrix(scores, "Attention Scores", 3, 3);
-        print_matrix(attention_weights, "Attention Weights", 3, 3);
-        print_matrix(output, "Output", 3, 3);
-        #endif
         
         return output;
         
@@ -343,30 +326,4 @@ Matrix masked_attention_cpu(const Matrix& Q, const Matrix& K, const Matrix& V, b
     Matrix output = multiply(attention_weights, V);
     
     return output;
-}
-
-// Utility function to create identity matrix
-Matrix create_identity_matrix(int size) {
-    Matrix identity(size, std::vector<float>(size, 0.0f));
-    for (int i = 0; i < size; ++i) {
-        identity[i][i] = 1.0f;
-    }
-    return identity;
-}
-
-// Utility function to create random matrix for testing
-Matrix create_random_matrix(int rows, int cols, float min_val = -1.0f, float max_val = 1.0f) {
-    Matrix mat(rows, std::vector<float>(cols));
-    
-    // Simple random number generation (for testing only)
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
-    
-    for (int i = 0; i < rows; ++i) {
-        for (int j = 0; j < cols; ++j) {
-            float random_val = static_cast<float>(std::rand()) / RAND_MAX;
-            mat[i][j] = min_val + random_val * (max_val - min_val);
-        }
-    }
-    
-    return mat;
 }

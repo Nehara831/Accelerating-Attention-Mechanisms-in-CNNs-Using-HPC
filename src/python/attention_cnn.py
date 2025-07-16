@@ -10,7 +10,7 @@ class AttentionCNN(nn.Module):
         super(AttentionCNN, self).__init__()
         
         # Convolutional layers
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
         self.conv4 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
@@ -40,69 +40,29 @@ class AttentionCNN(nn.Module):
         )
         
     def forward(self, x):
-        # First conv block
         x = self.pool(F.relu(self.bn1(self.conv1(x))))
         
-        # Second conv block with spatial attention
         x = F.relu(self.bn2(self.conv2(x)))
-        x = self.spatial_attn1(x)  # Apply spatial attention
+        x = self.spatial_attn1(x)  
         x = self.pool(x)
         
-        # Third conv block with spatial attention
         x = F.relu(self.bn3(self.conv3(x)))
-        x = self.spatial_attn2(x)  # Apply spatial attention
+        x = self.spatial_attn2(x)  
         x = self.pool(x)
         
-        # Fourth conv block with spatial attention
         x = F.relu(self.bn4(self.conv4(x)))
-        x = self.spatial_attn3(x)  # Apply spatial attention
+        x = self.spatial_attn3(x)  
         x = self.pool(x)
         
-        # Global average pooling
         x = F.adaptive_avg_pool2d(x, (1, 1))
         x = x.view(x.size(0), -1)
         
-        # Apply global attention to feature vector
-        x = x.unsqueeze(1)  # Add sequence dimension
+        x = x.unsqueeze(1)  
         x = self.global_attention(x)
-        x = x.squeeze(1)  # Remove sequence dimension
+        x = x.squeeze(1)  
         
         # Classification
         x = self.classifier(x)
         return x
 
-class LightweightAttentionCNN(nn.Module):
-    """Lightweight CNN with attention for mobile/edge deployment"""
     
-    def __init__(self, num_classes=10, use_cuda_attention=True):
-        super(LightweightAttentionCNN, self).__init__()
-        
-        # Depthwise separable convolutions
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
-        self.dw_conv2 = nn.Conv2d(32, 32, kernel_size=3, padding=1, groups=32)
-        self.pw_conv2 = nn.Conv2d(32, 64, kernel_size=1)
-        
-        self.dw_conv3 = nn.Conv2d(64, 64, kernel_size=3, padding=1, groups=64)
-        self.pw_conv3 = nn.Conv2d(64, 128, kernel_size=1)
-        
-        # Lightweight attention
-        self.spatial_attn = SpatialAttentionLayer(128, use_cuda_attention)
-        
-        # Classification
-        self.global_pool = nn.AdaptiveAvgPool2d(1)
-        self.classifier = nn.Linear(128, num_classes)
-        
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.max_pool2d(x, 2)
-        
-        x = F.relu(self.pw_conv2(self.dw_conv2(x)))
-        x = F.max_pool2d(x, 2)
-        
-        x = F.relu(self.pw_conv3(self.dw_conv3(x)))
-        x = self.spatial_attn(x)
-        
-        x = self.global_pool(x)
-        x = x.view(x.size(0), -1)
-        x = self.classifier(x)
-        return x

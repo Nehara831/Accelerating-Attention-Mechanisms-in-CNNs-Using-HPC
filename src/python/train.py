@@ -28,14 +28,13 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
             print(torch.cuda.memory_summary())
         print(f"Running on {device}")
     
-    # Data loading
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     ])
     
-    train_dataset = datasets.CIFAR10(root='./data', train=True, 
+    train_dataset = datasets.MNIST(root='./data', train=True, 
                                     download=True, transform=transform)
     
     # Create a subset sampler
@@ -48,7 +47,7 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
     
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, 
                             sampler=sampler, num_workers=num_workers,
-                            pin_memory=(device_type == 'cuda'))  # Enable pin_memory for GPU
+                            pin_memory=(device_type == 'cuda'))  
     
     print(f"Using {subset_size} samples for training with batch size {batch_size}")
     
@@ -86,7 +85,6 @@ def train_model(subset_size=1000, device_type='cuda', num_threads=None, batch_si
                 print(f'Epoch {epoch+1}, Batch {i+1}, Loss: {running_loss/10:.4f}')
                 running_loss = 0.0
                 
-                # Print GPU memory usage
                 if device_type == 'cuda':
                     print(f"GPU Memory: {torch.cuda.memory_allocated()/1024**2:.1f}MB allocated, "
                           f"{torch.cuda.memory_reserved()/1024**2:.1f}MB reserved")
