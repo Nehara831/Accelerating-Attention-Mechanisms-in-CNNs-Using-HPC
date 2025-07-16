@@ -71,19 +71,13 @@ __global__ void softmax_kernel(const float* input, float* output, int M, int N) 
 
 //  CUDA Attention Implementation 
 Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
-    fprintf(stderr, "\n=== CUDA Attention Debug Info ===\n");
-    fprintf(stderr, "Matrix Q dimensions: %zu x %zu\n", Q.size(), Q[0].size());
-    fprintf(stderr, "Matrix K dimensions: %zu x %zu\n", K.size(), K[0].size());
-    fprintf(stderr, "Matrix V dimensions: %zu x %zu\n", V.size(), V[0].size());
-    fflush(stderr);
-
+    
     int M = Q.size();      // Number of queries
     int N = K.size();      // Number of keys
     int K_dim = Q[0].size(); // Dimension of queries/keys
     int V_dim = V[0].size(); // Dimension of values
 
-    fprintf(stderr, "M (queries): %d, N (keys): %d, K_dim: %d, V_dim: %d\n", M, N, K_dim, V_dim);
-    fflush(stderr);
+
 
     // Check matrix dimensions
     if (Q[0].size() != K[0].size()) {
@@ -94,8 +88,7 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
         fprintf(stderr, "Error: Number of keys (%zu) must match number of values (%zu)\n", K.size(), V.size());
         throw std::runtime_error("Number of keys and values do not match");
     }
-    fprintf(stderr, "Matrix dimensions check passed\n");
-    fflush(stderr);
+
 
     // Allocate device memory
     float *d_Q, *d_K, *d_V, *d_K_T, *d_scores, *d_probs, *d_result;
@@ -107,15 +100,13 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
     CUDA_CHECK(cudaMalloc(&d_probs, M * N * sizeof(float)));
     CUDA_CHECK(cudaMalloc(&d_result, M * V_dim * sizeof(float)));
 
-    fprintf(stderr, "Device memory allocated\n");
-    fflush(stderr);
+
 
     float* h_Q = flatten(Q);
     float* h_K = flatten(K);
     float* h_V = flatten(V);
 
-    fprintf(stderr, "Host matrices flattened\n");
-    fflush(stderr);
+
 
     CUDA_CHECK(cudaMemcpy(d_Q, h_Q, M * K_dim * sizeof(float), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_K, h_K, N * K_dim * sizeof(float), cudaMemcpyHostToDevice));
@@ -134,8 +125,7 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
     CUDA_CHECK(cudaMemcpy(d_K_T, h_K_T, K_dim * N * sizeof(float), cudaMemcpyHostToDevice));
     delete[] h_K_T;
 
-    fprintf(stderr, "K^T computed\n");
-    fflush(stderr);
+
 
     dim3 blockDim(16, 16);
     dim3 gridDimQK((N + blockDim.x - 1) / blockDim.x,
@@ -148,34 +138,29 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
     CUDA_CHECK(cudaDeviceSynchronize());
     CUDA_CHECK(cudaGetLastError());
 
-    fprintf(stderr, "Q * K^T computed\n");
-    fflush(stderr);
+
 
     // Softmax(scores)
     softmax_kernel<<<gridDimQK, blockDim>>>(d_scores, d_probs, M, N);
     CUDA_CHECK(cudaDeviceSynchronize());
 
-    fprintf(stderr, "Softmax computed\n");
-    fflush(stderr);
+
 
     // probs * V
     dot_product_kernel<<<gridDimPV, blockDim>>>(d_probs, d_V, d_result, M, V_dim, N);
     CUDA_CHECK(cudaDeviceSynchronize());
     CUDA_CHECK(cudaGetLastError());
 
-    fprintf(stderr, "probs * V computed\n");
-    fflush(stderr);
+
 
     float* h_result = new float[M * V_dim];
     CUDA_CHECK(cudaMemcpy(h_result, d_result, M * V_dim * sizeof(float), cudaMemcpyDeviceToHost));
 
-    fprintf(stderr, "Result copied back to host\n");
-    fflush(stderr);
+
 
     Matrix result = unflatten(h_result, M, V_dim);
 
-    fprintf(stderr, "Result matrix created\n");
-    fflush(stderr);
+
 
     CUDA_CHECK(cudaFree(d_Q));
     CUDA_CHECK(cudaFree(d_K));
@@ -191,8 +176,6 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
     delete[] h_result;
 
 
-    fprintf(stderr, "CUDA attention completed successfully\n");
-    fflush(stderr);
 
     return result;
 }

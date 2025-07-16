@@ -9,7 +9,7 @@ try:
     print(f"CUDA attention module available: {CUDA_AVAILABLE}")
 except ImportError:
     CUDA_AVAILABLE = False
-    print("Warning: CUDA attention module not available, falling back to PyTorch")
+    print("Warning: CUDA attention module not available, falling back to CPU attention")
 
 class CUDAAttentionLayer(nn.Module):
     """Custom attention layer with both CPU and CUDA implementations"""
@@ -34,26 +34,41 @@ class CUDAAttentionLayer(nn.Module):
         K = self.k_proj(x)  # [B, L, D]
         V = self.v_proj(x)  # [B, L, D]
         
+        outputs = []
         if self.use_cuda and seq_len <= 4096:  # Only use CUDA for reasonable sequence lengths
-            # Process each batch item separately
-            outputs = []
             for i in range(batch_size):
                 q_i = Q[i].detach().cpu().numpy().astype(np.float32)  # [L, D]
                 k_i = K[i].detach().cpu().numpy().astype(np.float32)  # [L, D]
                 v_i = V[i].detach().cpu().numpy().astype(np.float32)  # [L, D]
-                
                 try:
                     result = attention_cuda_py.attention_cuda(q_i, k_i, v_i)
                     result_tensor = torch.from_numpy(result).to(x.device)
                     outputs.append(result_tensor)
                 except Exception as e:
-                    print(f"CUDA attention failed: {e}, falling back to PyTorch")
-                    result_tensor = self._pytorch_attention(Q[i:i+1], K[i:i+1], V[i:i+1]).squeeze(0)
-                    outputs.append(result_tensor)
-            
+                    print(f"CUDA attention failed: {e}, falling back to C++ CPU attention")
+                    try:
+                        result = attention_cuda_py.attention_cpu(q_i, k_i, v_i)
+                        result_tensor = torch.from_numpy(result).to(x.device)
+                        outputs.append(result_tensor)
+                    except Exception as e2:
+                        print(f"C++ CPU attention failed: {e2}, falling back to PyTorch")
+                        result_tensor = self._pytorch_attention(Q[i:i+1], K[i:i+1], V[i:i+1]).squeeze(0)
+                        outputs.append(result_tensor)
             output = torch.stack(outputs)
         else:
-            output = self._pytorch_attention(Q, K, V)
+            for i in range(batch_size):
+                q_i = Q[i].detach().cpu().numpy().astype(np.float32)  # [L, D]
+                k_i = K[i].detach().cpu().numpy().astype(np.float32)  # [L, D]
+                v_i = V[i].detach().cpu().numpy().astype(np.float32)  # [L, D]
+                try:
+                    result = attention_cuda_py.attention_cpu(q_i, k_i, v_i)
+                    result_tensor = torch.from_numpy(result).to(x.device)
+                    outputs.append(result_tensor)
+                except Exception as e:
+                    print(f"C++ CPU attention failed: {e}, falling back to PyTorch")
+                    result_tensor = self._pytorch_attention(Q[i:i+1], K[i:i+1], V[i:i+1]).squeeze(0)
+                    outputs.append(result_tensor)
+            output = torch.stack(outputs)
         
         return self.out_proj(output)
     
@@ -72,7 +87,6 @@ class SpatialAttentionLayer(nn.Module):
         super(SpatialAttentionLayer, self).__init__()
         self.in_channels = in_channels
         self.use_cuda = use_cuda and CUDA_AVAILABLE
-        print(f"Spatial attention layer initialized with CUDA: {self.use_cuda}")
         
         # 1x1 convolutions for Q, K, V
         self.q_conv = nn.Conv2d(in_channels, in_channels, 1)
@@ -89,31 +103,50 @@ class SpatialAttentionLayer(nn.Module):
         K = self.k_conv(x).view(batch_size, channels, -1).permute(0, 2, 1)  # [B, HW, C]
         V = self.v_conv(x).view(batch_size, channels, -1).permute(0, 2, 1)  # [B, HW, C]
         
+        outputs = []
+        if self.use_cuda and seq_len <= 4096:
         if self.use_cuda and seq_len <= 4096:  
             outputs = []
             for i in range(batch_size):
                 q_i = Q[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]
                 k_i = K[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]
                 v_i = V[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]
-                
                 try:
                     result = attention_cuda_py.attention_cuda(q_i, k_i, v_i)
                     result_tensor = torch.from_numpy(result).to(x.device)
                     outputs.append(result_tensor)
                 except Exception as e:
-                    print(f"CUDA attention failed: {e}, falling back to PyTorch")
-                    result_tensor = self._pytorch_attention(Q[i:i+1], K[i:i+1], V[i:i+1]).squeeze(0)
-                    outputs.append(result_tensor)
-            
+                    print(f"CUDA attention failed: {e}, falling back to C++ CPU attention")
+                    try:
+                        result = attention_cuda_py.attention_cpu(q_i, k_i, v_i)
+                        result_tensor = torch.from_numpy(result).to(x.device)
+                        outputs.append(result_tensor)
+                    except Exception as e2:
+                        print(f"C++ CPU attention failed: {e2}, falling back to PyTorch")
+                        result_tensor = self._pytorch_attention(Q[i:i+1], K[i:i+1], V[i:i+1]).squeeze(0)
+                        outputs.append(result_tensor)
             output = torch.stack(outputs)
         else:
-            output = self._pytorch_attention(Q, K, V)
+            for i in range(batch_size):
+                q_i = Q[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]
+                k_i = K[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]
+                v_i = V[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]
+                try:
+                    result = attention_cuda_py.attention_cpu(q_i, k_i, v_i)
+                    result_tensor = torch.from_numpy(result).to(x.device)
+                    outputs.append(result_tensor)
+                except Exception as e:
+                    print(f"C++ CPU attention failed: {e}, falling back to PyTorch")
+                    result_tensor = self._pytorch_attention(Q[i:i+1], K[i:i+1], V[i:i+1]).squeeze(0)
+                    outputs.append(result_tensor)
+            output = torch.stack(outputs)
         
         # Reshape back to spatial dimensions
         output = output.permute(0, 2, 1).view(batch_size, channels, height, width)
         return self.out_conv(output)
     
     def _pytorch_attention(self, Q, K, V):
+        device = Q.device
         scores = torch.matmul(Q, K.transpose(-2, -1))  # [B, HW, HW]
         scores = scores / np.sqrt(self.in_channels)
         attn_weights = torch.softmax(scores, dim=-1)  # [B, HW, HW]

@@ -20,7 +20,6 @@ Matrix numpy_to_matrix(py::array_t<float> input) {
     int rows = buf_info.shape[0];
     int cols = buf_info.shape[1];
     
-    std::cerr << "Converting numpy array to matrix: " << rows << "x" << cols << std::endl;
     
     Matrix mat(rows, std::vector<float>(cols));
     for (int i = 0; i < rows; i++) {
@@ -36,7 +35,6 @@ py::array_t<float> matrix_to_numpy(const Matrix& mat) {
     int rows = mat.size();
     int cols = mat[0].size();
     
-    std::cerr << "Converting matrix to numpy array: " << rows << "x" << cols << std::endl;
     
     // Create a contiguous array with the correct memory layout
     auto result = py::array_t<float>({rows, cols});
@@ -57,19 +55,13 @@ py::array_t<float> matrix_to_numpy(const Matrix& mat) {
 py::array_t<float> py_attention_cuda(py::array_t<float> Q, 
                                      py::array_t<float> K, 
                                      py::array_t<float> V) {
-    std::cerr << "\n=== CUDA Attention Debug Info ===" << std::endl;
-    std::cerr << "Input Q shape: " << Q.shape(0) << "x" << Q.shape(1) << std::endl;
-    std::cerr << "Input K shape: " << K.shape(0) << "x" << K.shape(1) << std::endl;
-    std::cerr << "Input V shape: " << V.shape(0) << "x" << V.shape(1) << std::endl;
-    
+        
     try {
         Matrix Q_mat = numpy_to_matrix(Q);
         Matrix K_mat = numpy_to_matrix(K);
         Matrix V_mat = numpy_to_matrix(V);
         
-        printf( "Calling CUDA attention implementation...");
         Matrix result = attention_cuda(Q_mat, K_mat, V_mat);
-        std::cerr << "CUDA attention completed successfully" << std::endl;
         
         return matrix_to_numpy(result);
     } catch (const std::exception& e) {
@@ -81,19 +73,13 @@ py::array_t<float> py_attention_cuda(py::array_t<float> Q,
 py::array_t<float> py_attention_cpu(py::array_t<float> Q, 
                                     py::array_t<float> K, 
                                     py::array_t<float> V) {
-    std::cerr << "\n=== CPU Attention Debug Info ===" << std::endl;
-    std::cerr << "Input Q shape: " << Q.shape(0) << "x" << Q.shape(1) << std::endl;
-    std::cerr << "Input K shape: " << K.shape(0) << "x" << K.shape(1) << std::endl;
-    std::cerr << "Input V shape: " << V.shape(0) << "x" << V.shape(1) << std::endl;
-    
+        
     try {
         Matrix Q_mat = numpy_to_matrix(Q);
         Matrix K_mat = numpy_to_matrix(K);
         Matrix V_mat = numpy_to_matrix(V);
         
-        std::cerr << "Calling CPU attention implementation..." << std::endl;
         Matrix result = attention_cpu(Q_mat, K_mat, V_mat);
-        std::cerr << "CPU attention completed successfully" << std::endl;
         
         return matrix_to_numpy(result);
     } catch (const std::exception& e) {
