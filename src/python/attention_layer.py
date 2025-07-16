@@ -1,3 +1,4 @@
+# attention_layer.py
 import torch
 import torch.nn as nn
 import numpy as np
@@ -105,7 +106,6 @@ class SpatialAttentionLayer(nn.Module):
         
         outputs = []
         if self.use_cuda and seq_len <= 4096:
-        if self.use_cuda and seq_len <= 4096:  
             outputs = []
             for i in range(batch_size):
                 q_i = Q[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]

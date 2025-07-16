@@ -65,7 +65,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=attention_cuda_py
+CMAKE_PROJECT_NAME:STATIC=attention_cnn
 
 //Path to a program.
 CMAKE_RANLIB:FILEPATH=/usr/bin/ranlib
@@ -80,13 +80,13 @@ CMAKE_STRIP:FILEPATH=/usr/bin/strip
 CMAKE_TAPI:FILEPATH=/Library/Developer/CommandLineTools/usr/bin/tapi
 
 //Value Computed by CMake
-attention_cuda_py_BINARY_DIR:STATIC=/Users/tharushinehara/Documents/Ruhuna/7th sem/HCP/Project/Accelerating-Attention-Mechanisms-in-CNNs-Using-HPC/build
+attention_cnn_BINARY_DIR:STATIC=/Users/tharushinehara/Documents/Ruhuna/7th sem/HCP/Project/Accelerating-Attention-Mechanisms-in-CNNs-Using-HPC/build
 
 //Value Computed by CMake
-attention_cuda_py_IS_TOP_LEVEL:STATIC=ON
+attention_cnn_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
-attention_cuda_py_SOURCE_DIR:STATIC=/Users/tharushinehara/Documents/Ruhuna/7th sem/HCP/Project/Accelerating-Attention-Mechanisms-in-CNNs-Using-HPC/src/cpp
+attention_cnn_SOURCE_DIR:STATIC=/Users/tharushinehara/Documents/Ruhuna/7th sem/HCP/Project/Accelerating-Attention-Mechanisms-in-CNNs-Using-HPC
 
 
 ########################
@@ -133,7 +133,7 @@ CMAKE_GENERATOR_PLATFORM:INTERNAL=
 CMAKE_GENERATOR_TOOLSET:INTERNAL=
 //Source directory with the top level CMakeLists.txt file for this
 // project
-CMAKE_HOME_DIRECTORY:INTERNAL=/Users/tharushinehara/Documents/Ruhuna/7th sem/HCP/Project/Accelerating-Attention-Mechanisms-in-CNNs-Using-HPC/src/cpp
+CMAKE_HOME_DIRECTORY:INTERNAL=/Users/tharushinehara/Documents/Ruhuna/7th sem/HCP/Project/Accelerating-Attention-Mechanisms-in-CNNs-Using-HPC
 //ADVANCED property for variable: CMAKE_LINKER
 CMAKE_LINKER-ADVANCED:INTERNAL=1
 //Name of CMakeLists files to read
