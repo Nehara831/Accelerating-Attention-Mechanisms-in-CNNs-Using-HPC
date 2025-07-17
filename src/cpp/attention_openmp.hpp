@@ -6,11 +6,6 @@
 // OpenMP attention implementation
 Matrix attention_openmp(const Matrix& Q, const Matrix& K, const Matrix& V);
 
-// OpenMP multi-head attention
-Matrix multi_head_attention_openmp(const Matrix& Q, const Matrix& K, const Matrix& V, int num_heads);
-
-// OpenMP masked attention (for causal/decoder attention)
-Matrix masked_attention_openmp(const Matrix& Q, const Matrix& K, const Matrix& V, bool causal_mask = false);
 
 // OpenMP utility functions
 Matrix transpose_openmp(const Matrix& mat);

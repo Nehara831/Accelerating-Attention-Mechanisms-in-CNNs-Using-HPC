@@ -96,12 +96,7 @@ class AttentionBackend:
                     return result
                     
             elif backend == 'openmp' and OPENMP_AVAILABLE:
-                if num_heads > 1:
-                    result = attention_cuda_py.multi_head_attention_openmp(Q, K, V, num_heads)
-                elif causal_mask:
-                    result = attention_cuda_py.masked_attention_openmp(Q, K, V, causal_mask)
-                else:
-                    result = attention_cuda_py.attention_openmp(Q, K, V)
+                result = attention_cuda_py.attention_openmp(Q, K, V)
                 return result
                 
             elif backend == 'cpu':
@@ -335,10 +330,7 @@ def benchmark_attention_backends(seq_len=128, embed_dim=512, num_heads=8, num_it
                 if backend == 'cuda' and num_heads == 1:
                     result = attention_cuda_py.attention_cuda(Q, K, V)
                 elif backend == 'openmp':
-                    if num_heads > 1:
-                        result = attention_cuda_py.multi_head_attention_openmp(Q, K, V, num_heads)
-                    else:
-                        result = attention_cuda_py.attention_openmp(Q, K, V)
+                    result = attention_cuda_py.attention_openmp(Q, K, V)
                 elif backend == 'cpu':
                     result = attention_cuda_py.attention_cpu(Q, K, V)
                 

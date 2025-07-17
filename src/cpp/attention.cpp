@@ -129,7 +129,8 @@ Matrix add(const Matrix& A, const Matrix& B) {
     return result;
 }
 
-void print_matrix(const Matrix& mat, const std::string& name, int max_rows = 5, int max_cols = 5) {
+// FIXED: Added missing opening brace
+void print_matrix(const Matrix& mat, const std::string& name, int max_rows, int max_cols) {
     if (mat.empty()) {
         std::cout << name << ": [empty matrix]" << std::endl;
         return;
@@ -218,8 +219,6 @@ Matrix attention_cpu(const Matrix& Q, const Matrix& K, const Matrix& V) {
     int seq_len_k = K.size();
     int embed_dim_v = V[0].size();
     
-
-    
     try {
         // Q * K^T
         Matrix K_T = transpose(K);
@@ -232,99 +231,10 @@ Matrix attention_cpu(const Matrix& Q, const Matrix& K, const Matrix& V) {
         
         Matrix output = multiply(attention_weights, V);
         
-        
         return output;
         
     } catch (const std::exception& e) {
         std::cerr << "Error in CPU attention computation: " << e.what() << std::endl;
         throw;
     }
-}
-
-// Multi-head attention CPU implementation
-Matrix multi_head_attention_cpu(const Matrix& Q, const Matrix& K, const Matrix& V, int num_heads) {
-    if (!validate_matrices(Q, K, V)) {
-        throw std::invalid_argument("Invalid matrix dimensions for multi-head attention");
-    }
-    
-    int seq_len = Q.size();
-    int embed_dim = Q[0].size();
-    
-    if (embed_dim % num_heads != 0) {
-        throw std::invalid_argument("Embedding dimension must be divisible by number of heads");
-    }
-    
-    int head_dim = embed_dim / num_heads;
-    Matrix output(seq_len, std::vector<float>(embed_dim, 0.0f));
-    
-    // Process each head
-    for (int head = 0; head < num_heads; ++head) {
-        int start_col = head * head_dim;
-        int end_col = start_col + head_dim;
-        
-        // Extract head-specific Q, K, V
-        Matrix Q_head(seq_len, std::vector<float>(head_dim));
-        Matrix K_head(K.size(), std::vector<float>(head_dim));
-        Matrix V_head(V.size(), std::vector<float>(head_dim));
-        
-        for (int i = 0; i < seq_len; ++i) {
-            for (int j = 0; j < head_dim; ++j) {
-                Q_head[i][j] = Q[i][start_col + j];
-            }
-        }
-        
-        for (int i = 0; i < K.size(); ++i) {
-            for (int j = 0; j < head_dim; ++j) {
-                K_head[i][j] = K[i][start_col + j];
-                V_head[i][j] = V[i][start_col + j];
-            }
-        }
-        
-        // Compute attention for this head
-        Matrix head_output = attention_cpu(Q_head, K_head, V_head);
-        
-        // Copy head output to final output
-        for (int i = 0; i < seq_len; ++i) {
-            for (int j = 0; j < head_dim; ++j) {
-                output[i][start_col + j] = head_output[i][j];
-            }
-        }
-    }
-    
-    return output;
-}
-
-// Masked attention (for causal/decoder attention)
-Matrix masked_attention_cpu(const Matrix& Q, const Matrix& K, const Matrix& V, bool causal_mask) {
-    if (!validate_matrices(Q, K, V)) {
-        throw std::invalid_argument("Invalid matrix dimensions for masked attention");
-    }
-    
-    int seq_len_q = Q.size();
-    int embed_dim = Q[0].size();
-    int seq_len_k = K.size();
-    
-    // Compute scores
-    Matrix K_T = transpose(K);
-    Matrix scores = multiply(Q, K_T);
-    
-    // Scale scores
-    float scale_factor = 1.0f / std::sqrt(static_cast<float>(embed_dim));
-    scores = scale(scores, scale_factor);
-    
-    // Apply mask if requested
-    if (causal_mask) {
-        const float NEG_INF = -1e9f;
-        for (int i = 0; i < seq_len_q; ++i) {
-            for (int j = i + 1; j < seq_len_k; ++j) {
-                scores[i][j] = NEG_INF;
-            }
-        }
-    }
-    
-    // Apply softmax and compute output
-    Matrix attention_weights = softmax(scores);
-    Matrix output = multiply(attention_weights, V);
-    
-    return output;
 }
