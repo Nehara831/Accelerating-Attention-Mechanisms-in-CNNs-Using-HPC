@@ -1,8 +1,8 @@
-//python_binding.cpp
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include "attention.hpp"
+#include "attention_openmp.hpp"
 #include "attention_cuda.hpp"
 #include <iostream>
 
@@ -21,7 +21,6 @@ Matrix numpy_to_matrix(py::array_t<float> input) {
     int rows = buf_info.shape[0];
     int cols = buf_info.shape[1];
     
-    
     Matrix mat(rows, std::vector<float>(cols));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -35,7 +34,6 @@ Matrix numpy_to_matrix(py::array_t<float> input) {
 py::array_t<float> matrix_to_numpy(const Matrix& mat) {
     int rows = mat.size();
     int cols = mat[0].size();
-    
     
     // Create a contiguous array with the correct memory layout
     auto result = py::array_t<float>({rows, cols});
@@ -56,7 +54,6 @@ py::array_t<float> matrix_to_numpy(const Matrix& mat) {
 py::array_t<float> py_attention_cuda(py::array_t<float> Q, 
                                      py::array_t<float> K, 
                                      py::array_t<float> V) {
-        
     try {
         Matrix Q_mat = numpy_to_matrix(Q);
         Matrix K_mat = numpy_to_matrix(K);
@@ -74,7 +71,6 @@ py::array_t<float> py_attention_cuda(py::array_t<float> Q,
 py::array_t<float> py_attention_cpu(py::array_t<float> Q, 
                                     py::array_t<float> K, 
                                     py::array_t<float> V) {
-        
     try {
         Matrix Q_mat = numpy_to_matrix(Q);
         Matrix K_mat = numpy_to_matrix(K);
@@ -89,12 +85,84 @@ py::array_t<float> py_attention_cpu(py::array_t<float> Q,
     }
 }
 
+py::array_t<float> py_attention_openmp(py::array_t<float> Q, 
+                                       py::array_t<float> K, 
+                                       py::array_t<float> V) {
+    try {
+        Matrix Q_mat = numpy_to_matrix(Q);
+        Matrix K_mat = numpy_to_matrix(K);
+        Matrix V_mat = numpy_to_matrix(V);
+        
+        Matrix result = attention_openmp(Q_mat, K_mat, V_mat);
+        
+        return matrix_to_numpy(result);
+    } catch (const std::exception& e) {
+        std::cerr << "Error in OpenMP attention: " << e.what() << std::endl;
+        throw;
+    }
+}
+
+py::array_t<float> py_multi_head_attention_openmp(py::array_t<float> Q, 
+                                                   py::array_t<float> K, 
+                                                   py::array_t<float> V,
+                                                   int num_heads) {
+    try {
+        Matrix Q_mat = numpy_to_matrix(Q);
+        Matrix K_mat = numpy_to_matrix(K);
+        Matrix V_mat = numpy_to_matrix(V);
+        
+        Matrix result = multi_head_attention_openmp(Q_mat, K_mat, V_mat, num_heads);
+        
+        return matrix_to_numpy(result);
+    } catch (const std::exception& e) {
+        std::cerr << "Error in OpenMP multi-head attention: " << e.what() << std::endl;
+        throw;
+    }
+}
+
+py::array_t<float> py_masked_attention_openmp(py::array_t<float> Q, 
+                                               py::array_t<float> K, 
+                                               py::array_t<float> V,
+                                               bool causal_mask) {
+    try {
+        Matrix Q_mat = numpy_to_matrix(Q);
+        Matrix K_mat = numpy_to_matrix(K);
+        Matrix V_mat = numpy_to_matrix(V);
+        
+        Matrix result = masked_attention_openmp(Q_mat, K_mat, V_mat, causal_mask);
+        
+        return matrix_to_numpy(result);
+    } catch (const std::exception& e) {
+        std::cerr << "Error in OpenMP masked attention: " << e.what() << std::endl;
+        throw;
+    }
+}
+
 PYBIND11_MODULE(attention_cuda_py, m) {
-    m.doc() = "CUDA Attention Implementation";
+    m.doc() = "CUDA, CPU, and OpenMP Attention Implementations";
     
+    // Basic attention functions
     m.def("attention_cuda", &py_attention_cuda, "CUDA attention computation");
     m.def("attention_cpu", &py_attention_cpu, "CPU attention computation");
+    m.def("attention_openmp", &py_attention_openmp, "OpenMP attention computation");
+    
+    // Multi-head and masked attention
+    m.def("multi_head_attention_openmp", &py_multi_head_attention_openmp, 
+          "OpenMP multi-head attention computation",
+          py::arg("Q"), py::arg("K"), py::arg("V"), py::arg("num_heads"));
+    
+    m.def("masked_attention_openmp", &py_masked_attention_openmp, 
+          "OpenMP masked attention computation",
+          py::arg("Q"), py::arg("K"), py::arg("V"), py::arg("causal_mask") = false);
+    
+    // CUDA utility functions
     m.def("cuda_available", &cuda_available, "Check if CUDA is available");
     m.def("get_cuda_device_count", &get_cuda_device_count, "Get CUDA device count");
     m.def("print_cuda_info", &print_cuda_info, "Print CUDA device information");
+    
+    // OpenMP utility functions
+    m.def("openmp_available", &openmp_available, "Check if OpenMP is available");
+    m.def("get_openmp_max_threads", &get_openmp_max_threads, "Get OpenMP max threads");
+    m.def("print_openmp_info", &print_openmp_info, "Print OpenMP information");
+    m.def("set_openmp_threads", &set_openmp_threads, "Set OpenMP thread count");
 }
