@@ -113,7 +113,6 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
     CUDA_CHECK(cudaMemcpy(d_K, h_K, N * K_dim * sizeof(float), cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_V, h_V, N * V_dim * sizeof(float), cudaMemcpyHostToDevice));
 
-    fprintf(stderr, "Data copied to device\n");
     fflush(stderr);
 
     //  K^T

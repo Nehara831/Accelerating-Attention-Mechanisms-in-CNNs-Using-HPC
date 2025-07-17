@@ -148,12 +148,6 @@ Matrix attention_openmp(const Matrix& Q, const Matrix& K, const Matrix& V) {
     // Step 4: Multiply by V
     Matrix output = multiply_openmp(attention_weights, V);
     
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-    
-    std::cout << "OpenMP attention computation completed in " << duration.count() << " μs" 
-              << " using " << omp_get_max_threads() << " threads" << std::endl;
-    
     return output;
 }
 
