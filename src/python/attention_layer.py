@@ -22,7 +22,7 @@ def try_import_attention_module():
             CUDA_AVAILABLE = attention_cuda_py.cuda_available()
             OPENMP_AVAILABLE = attention_cuda_py.openmp_available()
             
-            print(f"✓ Attention module loaded successfully!")
+            print(f" Attention module loaded successfully!")
             print(f"  - CUDA available: {CUDA_AVAILABLE}")
             print(f"  - OpenMP available: {OPENMP_AVAILABLE}")
             
@@ -51,7 +51,6 @@ def try_import_attention_module():
         OPENMP_AVAILABLE = False
         attention_cuda_py = None
 
-# Try to import the module
 try_import_attention_module()
 
 class AttentionBackend:
@@ -59,22 +58,10 @@ class AttentionBackend:
     
     @staticmethod
     def compute_attention(Q, K, V, backend='auto', num_heads=1, causal_mask=False):
-        """
-        Compute attention using the specified backend
         
-        Args:
-            Q, K, V: numpy arrays of shape [seq_len, embed_dim]
-            backend: str, one of 'auto', 'cuda', 'openmp', 'cpu', 'pytorch'
-            num_heads: int, number of attention heads (for multi-head attention)
-            causal_mask: bool, whether to apply causal masking
-            
-        Returns:
-            numpy array of shape [seq_len, embed_dim] or None if failed
-        """
         if not ATTENTION_MODULE_AVAILABLE:
             return None
         
-        # Auto-select best available backend
         if backend == 'auto':
             if CUDA_AVAILABLE:
                 backend = 'cuda'
@@ -138,7 +125,6 @@ class EnhancedAttentionLayer(nn.Module):
         V = self.v_proj(x)  # [B, L, D]
         
             
-        # Process batch using custom attention
         outputs = []
         backend_used = None
         
@@ -147,7 +133,6 @@ class EnhancedAttentionLayer(nn.Module):
             k_i = K[i].detach().cpu().numpy().astype(np.float32)  # [L, D]
             v_i = V[i].detach().cpu().numpy().astype(np.float32)  # [L, D]
             
-            # Try custom attention backends
             result = AttentionBackend.compute_attention(
                 q_i, k_i, v_i, 
                 backend=self.backend, 
@@ -157,17 +142,7 @@ class EnhancedAttentionLayer(nn.Module):
             
             result_tensor = torch.from_numpy(result).to(x.device)
             outputs.append(result_tensor)
-            if backend_used is None:
-                # Determine which backend was actually used
-                if self.backend == 'auto':
-                    if CUDA_AVAILABLE :
-                        backend_used = 'cuda'
-                    elif OPENMP_AVAILABLE:
-                        backend_used = 'openmp'
-                    else:
-                        backend_used = 'cpu'
-                else:
-                    backend_used = self.backend
+            
             
         
         output = torch.stack(outputs)
@@ -198,17 +173,16 @@ class SpatialAttentionLayer(nn.Module):
         
         # Generate Q, K, V
         Q = self.q_conv(x).view(batch_size, channels, -1).permute(0, 2, 1)  # [B, HW, C]
-        K = self.k_conv(x).view(batch_size, channels, -1).permute(0, 2, 1)  # [B, HW, C]
-        V = self.v_conv(x).view(batch_size, channels, -1).permute(0, 2, 1)  # [B, HW, C]
+        K = self.k_conv(x).view(batch_size, channels, -1).permute(0, 2, 1)  
+        V = self.v_conv(x).view(batch_size, channels, -1).permute(0, 2, 1)  
         
         
         outputs = []
         for i in range(batch_size):
             q_i = Q[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]
-            k_i = K[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]
-            v_i = V[i].detach().cpu().numpy().astype(np.float32)  # [HW, C]
+            k_i = K[i].detach().cpu().numpy().astype(np.float32)  
+            v_i = V[i].detach().cpu().numpy().astype(np.float32)  
             
-            # Try custom attention backends
             result = AttentionBackend.compute_attention(
                 q_i, k_i, v_i, backend=self.backend
             )

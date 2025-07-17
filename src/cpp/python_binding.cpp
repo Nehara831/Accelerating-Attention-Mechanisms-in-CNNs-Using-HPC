@@ -8,7 +8,6 @@
 
 namespace py = pybind11;
 
-// Convert numpy array to Matrix
 Matrix numpy_to_matrix(py::array_t<float> input) {
     py::buffer_info buf_info = input.request();
     float *ptr = static_cast<float *>(buf_info.ptr);
@@ -30,17 +29,14 @@ Matrix numpy_to_matrix(py::array_t<float> input) {
     return mat;
 }
 
-// Convert Matrix to numpy array
 py::array_t<float> matrix_to_numpy(const Matrix& mat) {
     int rows = mat.size();
     int cols = mat[0].size();
     
-    // Create a contiguous array with the correct memory layout
     auto result = py::array_t<float>({rows, cols});
     py::buffer_info buf = result.request();
     float *ptr = static_cast<float *>(buf.ptr);
     
-    // Copy data with proper memory layout
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             ptr[i * cols + j] = mat[i][j];
@@ -106,17 +102,16 @@ py::array_t<float> py_attention_openmp(py::array_t<float> Q,
 PYBIND11_MODULE(attention_cuda_py, m) {
     m.doc() = "CUDA, CPU, and OpenMP Attention Implementations";
     
-    // Basic attention functions
     m.def("attention_cuda", &py_attention_cuda, "CUDA attention computation");
     m.def("attention_cpu", &py_attention_cpu, "CPU attention computation");
     m.def("attention_openmp", &py_attention_openmp, "OpenMP attention computation");
     
-    // CUDA utility functions
+    // CUDA 
     m.def("cuda_available", &cuda_available, "Check if CUDA is available");
     m.def("get_cuda_device_count", &get_cuda_device_count, "Get CUDA device count");
     m.def("print_cuda_info", &print_cuda_info, "Print CUDA device information");
     
-    // OpenMP utility functions
+    // OpenMP 
     m.def("openmp_available", &openmp_available, "Check if OpenMP is available");
     m.def("get_openmp_max_threads", &get_openmp_max_threads, "Get OpenMP max threads");
     m.def("print_openmp_info", &print_openmp_info, "Print OpenMP information");

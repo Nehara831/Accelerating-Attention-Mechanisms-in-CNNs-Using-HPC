@@ -7,15 +7,17 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from src.python.attention_cnn import AttentionCNN
-from src.python.hybrid_attention import SwappedHybridAttentionCNN,TrueHybridAttentionCNN
+from src.python.hybrid_attention import SwappedAttentionCNN,TrueHybridAttentionCNN
 from torchvision import datasets, transforms
 import time
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 import psutil
+import pynvml
+pynvml.nvmlInit()
 
-# Set optimal OpenMP settings for hybrid processing
+
 os.environ['OMP_NUM_THREADS'] = '16'
 
 def set_seed(seed=42):
@@ -30,11 +32,11 @@ def set_seed(seed=42):
     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
     print(f"Random seeds set to: {seed}")
 
-def create_hybrid_model(configuration='swapped', num_classes=10, in_channels=1):
+def create_hybrid_model(configuration='hybrid', num_classes=10, in_channels=1):
     """Create hybrid model with different configurations"""
     
-    if configuration == 'swapped':
-        return SwappedHybridAttentionCNN(num_classes, in_channels)
+    if configuration == 'hybrid':
+        return SwappedAttentionCNN(num_classes, in_channels)
     elif configuration == 'original':
         return TrueHybridAttentionCNN(num_classes, in_channels) 
     elif configuration == 'cuda_only':
@@ -42,13 +44,13 @@ def create_hybrid_model(configuration='swapped', num_classes=10, in_channels=1):
     elif configuration == 'openmp_only':
         return AttentionCNN(num_classes, in_channels, backend='openmp')
     else:
-        return SwappedHybridAttentionCNN(num_classes, in_channels)
+        return AttentionCNN(num_classes, in_channels, backend='cpu')
 
-def plot_metrics(epochs, accuracies, cpu_memory, gpu_memory, config_name):
+def plot_metrics(epochs, accuracies, cpu_memory, gpu_memory, cpu_usage, gpu_usage, config_name):
     """Create simple plots for accuracy and memory usage"""
-    
+    print("inside plotting")
     # Create plots directory
-    os.makedirs('./plots', exist_ok=True)
+    os.makedirs('plots', exist_ok=True)
     
     # Plot 1: Accuracy over epochs
     plt.figure(figsize=(10, 6))
@@ -58,7 +60,7 @@ def plot_metrics(epochs, accuracies, cpu_memory, gpu_memory, config_name):
     plt.ylabel('Accuracy (%)')
     plt.grid(True, alpha=0.3)
     plt.ylim(0, 100)
-    plt.savefig(f'./plots/accuracy_{config_name}.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'plots/accuracy_{config_name}.png', dpi=300, bbox_inches='tight')
     plt.close()
     
     # Plot 2: Memory usage over epochs
@@ -81,24 +83,51 @@ def plot_metrics(epochs, accuracies, cpu_memory, gpu_memory, config_name):
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig(f'./plots/memory_{config_name}.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'plots/memory_{config_name}.png', dpi=300, bbox_inches='tight')
     plt.close()
+
+    # Plot 3: CPU and GPU usage over epochs
+    plt.figure(figsize=(12, 5))
+
+    # CPU Usage
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, cpu_usage, 'c-o', linewidth=2, markersize=6)
+    plt.title(f'CPU Usage (%) - {config_name}')
+    plt.xlabel('Epoch')
+    plt.ylabel('Usage (%)')
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, 100)
+
+    # GPU Usage
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, gpu_usage, 'm-o', linewidth=2, markersize=6)
+    plt.title(f'GPU Usage (%) - {config_name}')
+    plt.xlabel('Epoch')
+    plt.ylabel('Usage (%)')
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, 100)
+
+    plt.tight_layout()
+    plt.savefig(f'plots/utilization_{config_name}.png', dpi=300, bbox_inches='tight')
+    plt.close()
+
     
-    print(f"📊 Plots saved to ./plots/")
+    print(f"📊 Plots saved to plots/")
 
 def train_swapped_hybrid_model(subset_size=1000, device_type='cuda', batch_size=32, 
-                              seed=42, configuration='swapped'):
+                              seed=42, configuration='hybrid'):
     """Train model with swapped hybrid approach"""
     
     set_seed(seed)
     
-    # Lists to store metrics
     epochs = []
     accuracies = []
     cpu_memory = []
     gpu_memory = []
+    cpu_usage = []
+    gpu_usage = []
+
     
-    # Optimize PyTorch for hybrid processing
     torch.set_num_threads(16)
     torch.set_num_interop_threads(1)
     
@@ -107,7 +136,7 @@ def train_swapped_hybrid_model(subset_size=1000, device_type='cuda', batch_size=
     if device.type == 'cuda':
         torch.cuda.empty_cache()
     else:
-        print(f"🖥️  Using CPU device")
+        print(f"Using CPU device")
     
     # Data preparation
     transform = transforms.Compose([
@@ -188,17 +217,28 @@ def train_swapped_hybrid_model(subset_size=1000, device_type='cuda', batch_size=
         # Get memory usage
         cpu_mem = psutil.Process().memory_info().rss / 1024 / 1024  # MB
         gpu_mem = torch.cuda.memory_allocated() / 1024 / 1024 if torch.cuda.is_available() else 0  # MB
-        
+        # Get CPU and GPU usage (%)
+        cpu_usage_percent = psutil.cpu_percent(interval=0.1)
+
+        if torch.cuda.is_available():
+            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            gpu_util = pynvml.nvmlDeviceGetUtilizationRates(handle).gpu
+        else:
+            gpu_util = 0
+
         # Store metrics
         epochs.append(epoch + 1)
         accuracies.append(epoch_accuracy)
         cpu_memory.append(cpu_mem)
         gpu_memory.append(gpu_mem)
+        cpu_usage.append(cpu_usage_percent)
+        gpu_usage.append(gpu_util)
+
         
-        print(f"⏱  Epoch {epoch+1}: {epoch_time:.2f}s")
+        print(f" Epoch {epoch+1}: {epoch_time:.2f}s")
         if total_samples > 0:
             print(f" Epoch {epoch+1} accuracy: {epoch_accuracy:.2f}%")
-        print(f"💾 CPU: {cpu_mem:.1f}MB, GPU: {gpu_mem:.1f}MB")
+        print(f" CPU: {cpu_mem:.1f}MB, GPU: {gpu_mem:.1f}MB")
 
     # Training completed
     total_end_time = time.time()
@@ -211,14 +251,19 @@ def train_swapped_hybrid_model(subset_size=1000, device_type='cuda', batch_size=
     print(f" Avg per epoch: {elapsed/9:.2f} seconds")
     
     # Create plots
-    plot_metrics(epochs, accuracies, cpu_memory, gpu_memory, configuration)
+    plot_metrics(
+        epochs, accuracies,
+        cpu_memory, gpu_memory,
+        cpu_usage, gpu_usage,
+        configuration
+    )
     
     return elapsed
 
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description='🔄 Hybrid Training with Plotting')
+    parser = argparse.ArgumentParser(description=' Hybrid Training with Plotting')
     
     parser.add_argument('--device', type=str, default='cuda', choices=['cuda', 'cpu'],
                       help='Device for PyTorch operations')
@@ -228,8 +273,8 @@ if __name__ == "__main__":
                       help='Batch size for training')
     parser.add_argument('--seed', type=int, default=42,
                       help='Random seed')
-    parser.add_argument('--config', type=str, default='swapped',
-                      choices=['swapped', 'original', 'cuda_only', 'openmp_only'],
+    parser.add_argument('--config', type=str, default='hybrid',
+                      choices=['hybrid', 'original', 'cuda_only', 'openmp_only','cpu'],
                       help='Hybrid configuration')
     
     args = parser.parse_args()

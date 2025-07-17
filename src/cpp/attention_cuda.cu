@@ -5,14 +5,7 @@
 #include "attention.hpp"
 #include "attention_cuda.hpp"
 
-#define CUDA_CHECK(call) \
-    do { \
-        cudaError_t error = call; \
-        if (error != cudaSuccess) { \
-            fprintf(stderr, "CUDA error at %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(error)); \
-            throw std::runtime_error(cudaGetErrorString(error)); \
-        } \
-    } while (0)
+
 
 float* flatten(const Matrix& mat) {
     int rows = mat.size();
@@ -40,8 +33,7 @@ __global__ void dot_product_kernel(const float* A, const float* B, float* C, int
     if (row < M && col < N) {
         float sum = 0.0f;
         for (int k = 0; k < K; k++) {
-            // For Q*K^T: A is [M x K], B is [N x K] (transposed)
-            // For probs*V: A is [M x N], B is [N x K]
+
             sum += A[row * K + k] * B[k * N + col];
         }
         C[row * N + col] = sum;
@@ -75,8 +67,8 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
     
     int M = Q.size();      // Number of queries
     int N = K.size();      // Number of keys
-    int K_dim = Q[0].size(); // Dimension of queries/keys
-    int V_dim = V[0].size(); // Dimension of values
+    int K_dim = Q[0].size(); // Dim  queries/keys
+    int V_dim = V[0].size(); // Dim values
 
 
 
@@ -93,13 +85,13 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
 
     // Allocate device memory
     float *d_Q, *d_K, *d_V, *d_K_T, *d_scores, *d_probs, *d_result;
-    CUDA_CHECK(cudaMalloc(&d_Q, M * K_dim * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_K, N * K_dim * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_V, N * V_dim * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_K_T, K_dim * N * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_scores, M * N * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_probs, M * N * sizeof(float)));
-    CUDA_CHECK(cudaMalloc(&d_result, M * V_dim * sizeof(float)));
+    cudaMalloc(&d_Q, M * K_dim * sizeof(float));
+    cudaMalloc(&d_K, N * K_dim * sizeof(float));
+    cudaMalloc(&d_V, N * V_dim * sizeof(float));
+    cudaMalloc(&d_K_T, K_dim * N * sizeof(float));
+    cudaMalloc(&d_scores, M * N * sizeof(float));
+    cudaMalloc(&d_probs, M * N * sizeof(float));
+    cudaMalloc(&d_result, M * V_dim * sizeof(float));
 
 
 
@@ -109,9 +101,9 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
 
 
 
-    CUDA_CHECK(cudaMemcpy(d_Q, h_Q, M * K_dim * sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_K, h_K, N * K_dim * sizeof(float), cudaMemcpyHostToDevice));
-    CUDA_CHECK(cudaMemcpy(d_V, h_V, N * V_dim * sizeof(float), cudaMemcpyHostToDevice));
+    cudaMemcpy(d_Q, h_Q, M * K_dim * sizeof(float), cudaMemcpyHostToDevic);
+    cudaMemcpy(d_K, h_K, N * K_dim * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_V, h_V, N * V_dim * sizeof(float), cudaMemcpyHostToDevice);
 
     fflush(stderr);
 
@@ -122,7 +114,7 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
             h_K_T[j * N + i] = h_K[i * K_dim + j];
         }
     }
-    CUDA_CHECK(cudaMemcpy(d_K_T, h_K_T, K_dim * N * sizeof(float), cudaMemcpyHostToDevice));
+    cudaMemcpy(d_K_T, h_K_T, K_dim * N * sizeof(float), cudaMemcpyHostToDevice);
     delete[] h_K_T;
 
 
@@ -135,26 +127,26 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
 
     //  Q * K^T
     dot_product_kernel<<<gridDimQK, blockDim>>>(d_Q, d_K_T, d_scores, M, N, K_dim);
-    CUDA_CHECK(cudaDeviceSynchronize());
-    CUDA_CHECK(cudaGetLastError());
+    cudaDeviceSynchronize();
+    cudaGetLastError();
 
 
 
-    // Softmax(scores)
+    // Softmax
     softmax_kernel<<<gridDimQK, blockDim>>>(d_scores, d_probs, M, N);
-    CUDA_CHECK(cudaDeviceSynchronize());
+    cudaDeviceSynchronize();
 
 
 
     // probs * V
     dot_product_kernel<<<gridDimPV, blockDim>>>(d_probs, d_V, d_result, M, V_dim, N);
-    CUDA_CHECK(cudaDeviceSynchronize());
-    CUDA_CHECK(cudaGetLastError());
+    cudaDeviceSynchronize();
+    cudaGetLastError();
 
 
 
     float* h_result = new float[M * V_dim];
-    CUDA_CHECK(cudaMemcpy(h_result, d_result, M * V_dim * sizeof(float), cudaMemcpyDeviceToHost));
+    cudaMemcpy(h_result, d_result, M * V_dim * sizeof(float), cudaMemcpyDeviceToHost);
 
 
 
@@ -162,19 +154,18 @@ Matrix attention_cuda(const Matrix& Q, const Matrix& K, const Matrix& V) {
 
 
 
-    CUDA_CHECK(cudaFree(d_Q));
-    CUDA_CHECK(cudaFree(d_K));
-    CUDA_CHECK(cudaFree(d_V));
-    CUDA_CHECK(cudaFree(d_K_T));
-    CUDA_CHECK(cudaFree(d_scores));
-    CUDA_CHECK(cudaFree(d_probs));
-    CUDA_CHECK(cudaFree(d_result));
+    cudaFree(d_Q);
+    cudaFree(d_K);
+    cudaFree(d_V);
+    cudaFree(d_K_T);
+    cudaFree(d_scores);
+    cudaFree(d_probs);
+    cudaFree(d_result);
 
     delete[] h_Q;
     delete[] h_K;
     delete[] h_V;
     delete[] h_result;
-
 
 
     return result;

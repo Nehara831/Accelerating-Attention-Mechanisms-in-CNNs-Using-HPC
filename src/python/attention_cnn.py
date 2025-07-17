@@ -19,7 +19,7 @@ class AttentionCNN(nn.Module):
         self.conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
         self.conv4 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
         
-        # Spatial attention layers with explicit backend control
+        # Spatial attention layers 
         self.spatial_attn1 = SpatialAttentionLayer(128, backend=backend)
         self.spatial_attn2 = SpatialAttentionLayer(256, backend=backend)
         self.spatial_attn3 = SpatialAttentionLayer(512, backend=backend)
@@ -65,9 +65,9 @@ class AttentionCNN(nn.Module):
         # Global enhanced attention processing:
         x = F.adaptive_avg_pool2d(x, (1, 1))
         x = x.reshape(x.size(0), -1)
-        x = x.unsqueeze(1)  # Add sequence dimension [batch_size, 1, 512]
-        x = self.global_attention(x)  # Apply enhanced attention
-        x = x.squeeze(1)  # Remove sequence dimension [batch_size, 512]
+        x = x.unsqueeze(1)  
+        x = self.global_attention(x)  
+        x = x.squeeze(1) 
         
         # Classification
         x = self.classifier(x)

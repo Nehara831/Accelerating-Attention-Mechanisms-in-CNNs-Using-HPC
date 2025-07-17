@@ -65,10 +65,9 @@ Matrix softmax(const Matrix& mat) {
     Matrix result(rows, std::vector<float>(cols));
     
     for (int i = 0; i < rows; ++i) {
-        // Find max value in the row for numerical stability
         float max_val = *std::max_element(mat[i].begin(), mat[i].end());
         
-        // Compute exp(x - max) and sum
+        //  exp(x - max) and sum
         float sum = 0.0f;
         for (int j = 0; j < cols; ++j) {
             result[i][j] = std::exp(mat[i][j] - max_val);
@@ -129,7 +128,6 @@ Matrix add(const Matrix& A, const Matrix& B) {
     return result;
 }
 
-// FIXED: Added missing opening brace
 void print_matrix(const Matrix& mat, const std::string& name, int max_rows, int max_cols) {
     if (mat.empty()) {
         std::cout << name << ": [empty matrix]" << std::endl;

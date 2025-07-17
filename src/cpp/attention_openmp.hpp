@@ -3,7 +3,6 @@
 
 #include "attention.hpp"
 
-// OpenMP attention implementation
 Matrix attention_openmp(const Matrix& Q, const Matrix& K, const Matrix& V);
 
 
@@ -19,4 +18,4 @@ int get_openmp_max_threads();
 void print_openmp_info();
 void set_openmp_threads(int num_threads);
 
-#endif // ATTENTION_OPENMP_HPP
+#endif 

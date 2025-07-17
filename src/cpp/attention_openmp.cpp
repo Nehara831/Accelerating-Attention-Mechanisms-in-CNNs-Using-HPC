@@ -7,7 +7,6 @@
 #include <chrono>
 #include <omp.h>
 
-// OpenMP matrix transpose
 Matrix transpose_openmp(const Matrix& mat) {
     if (mat.empty() || mat[0].empty()) {
         throw std::invalid_argument("Cannot transpose empty matrix");
@@ -17,7 +16,7 @@ Matrix transpose_openmp(const Matrix& mat) {
     int cols = mat[0].size();
     Matrix result(cols, std::vector<float>(rows));
     
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for 
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
             result[j][i] = mat[i][j];
@@ -27,7 +26,6 @@ Matrix transpose_openmp(const Matrix& mat) {
     return result;
 }
 
-// OpenMP matrix multiplication
 Matrix multiply_openmp(const Matrix& A, const Matrix& B) {
     if (A.empty() || B.empty() || A[0].empty() || B[0].empty()) {
         throw std::invalid_argument("Cannot multiply empty matrices");
@@ -56,7 +54,6 @@ Matrix multiply_openmp(const Matrix& A, const Matrix& B) {
     return result;
 }
 
-// OpenMP softmax
 Matrix softmax_openmp(const Matrix& mat) {
     if (mat.empty() || mat[0].empty()) {
         throw std::invalid_argument("Cannot apply softmax to empty matrix");
@@ -68,13 +65,13 @@ Matrix softmax_openmp(const Matrix& mat) {
     
     #pragma omp parallel for
     for (int i = 0; i < rows; ++i) {
-        // Find max value in the row for numerical stability
+        //  max value in the row 
         float max_val = mat[i][0];
         for (int j = 1; j < cols; ++j) {
             max_val = std::max(max_val, mat[i][j]);
         }
         
-        // Compute exp(x - max) and sum
+        //  exp(x - max) and sum
         float sum = 0.0f;
         for (int j = 0; j < cols; ++j) {
             result[i][j] = std::exp(mat[i][j] - max_val);
@@ -90,7 +87,6 @@ Matrix softmax_openmp(const Matrix& mat) {
     return result;
 }
 
-// OpenMP matrix scaling
 Matrix scale_openmp(const Matrix& mat, float scalar) {
     if (mat.empty() || mat[0].empty()) {
         return mat;
@@ -100,7 +96,7 @@ Matrix scale_openmp(const Matrix& mat, float scalar) {
     int cols = mat[0].size();
     Matrix result(rows, std::vector<float>(cols));
     
-    #pragma omp parallel for collapse(2)
+    #pragma omp parallel for 
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < cols; ++j) {
             result[i][j] = mat[i][j] * scalar;
@@ -134,18 +130,18 @@ Matrix attention_openmp(const Matrix& Q, const Matrix& K, const Matrix& V) {
     
     auto start_time = std::chrono::high_resolution_clock::now();
     
-    // Step 1: Compute Q * K^T using OpenMP
+    //  Q * K^T 
     Matrix K_T = transpose_openmp(K);
     Matrix scores = multiply_openmp(Q, K_T);
     
-    // Step 2: Scale by 1/sqrt(d_k)
+    //  Scale by 1/sqrt(d_k)
     float scale_factor = 1.0f / std::sqrt(static_cast<float>(Q_cols));
     scores = scale_openmp(scores, scale_factor);
     
-    // Step 3: Apply softmax
+    //  softmax
     Matrix attention_weights = softmax_openmp(scores);
     
-    // Step 4: Multiply by V
+    //  Multiply by V
     Matrix output = multiply_openmp(attention_weights, V);
     
     return output;
